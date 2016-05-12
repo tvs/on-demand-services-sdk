@@ -23,7 +23,18 @@ var _ = Describe("Plan", func() {
 			        "example-az"
 			      ],
 			      "instances": 1,
-			      "lifecycle": "errand"
+			      "lifecycle": "errand",
+						"jobs": [
+							{
+								"name": "kafka",
+								"release": "1.3",
+								"properties": {
+									"example_bool": true,
+									"example_number": 2,
+									"example_string": "thing"
+								}
+							}
+						]
 			    }
 			  ],
 			  "properties": {
@@ -40,6 +51,15 @@ var _ = Describe("Plan", func() {
 				AZs:            []string{"example-az"},
 				Instances:      1,
 				Lifecycle:      "errand",
+				Jobs: []serviceadapter.Job{{
+					Name:    "kafka",
+					Release: "1.3",
+					Properties: serviceadapter.Properties{
+						"example_bool":   true,
+						"example_number": 2.0,
+						"example_string": "thing",
+					},
+				}},
 			}},
 			Properties: serviceadapter.Properties{"example": "property"},
 		}
@@ -149,6 +169,77 @@ var _ = Describe("Plan", func() {
 			})
 
 			It("returns an error", func() {
+				Expect(plan.Validate()).To(HaveOccurred())
+			})
+		})
+
+		Context("when jobs block is present", func() {
+			BeforeEach(func() {
+				plan.InstanceGroups[0].Jobs = []serviceadapter.Job{{
+					Name:       "job-name",
+					Release:    "release-name",
+					Properties: serviceadapter.Properties{"example-property": "thing"},
+				}}
+			})
+
+			Context("when job name is missing", func() {
+				BeforeEach(func() {
+					plan.InstanceGroups[0].Jobs[0].Name = ""
+				})
+				It("returns an error", func() {
+					Expect(plan.Validate()).To(HaveOccurred())
+				})
+			})
+			Context("when release is missing", func() {
+				BeforeEach(func() {
+					plan.InstanceGroups[0].Jobs[0].Release = ""
+				})
+				It("returns an error", func() {
+					Expect(plan.Validate()).To(HaveOccurred())
+				})
+			})
+			Context("when properties is missing", func() {
+				BeforeEach(func() {
+					plan.InstanceGroups[0].Jobs[0].Properties = nil
+				})
+				It("returns an error", func() {
+					Expect(plan.Validate()).To(HaveOccurred())
+				})
+			})
+		})
+
+		Context("when multiple jobs are present", func() {
+			BeforeEach(func() {
+				plan.InstanceGroups[0].Jobs = []serviceadapter.Job{
+					{
+						Name:       "job-name",
+						Release:    "release-name",
+						Properties: serviceadapter.Properties{"example-property": "thing"},
+					},
+					{
+						Name: "",
+					}}
+			})
+
+			It("runs the validation on the second job", func() {
+				Expect(plan.Validate()).To(HaveOccurred())
+			})
+		})
+
+		Context("when multiple instance groups are present", func() {
+			BeforeEach(func() {
+				plan.InstanceGroups = append(plan.InstanceGroups, serviceadapter.InstanceGroup{
+					Name:      "example-server",
+					VMType:    "small",
+					Networks:  []string{"example-network"},
+					Instances: 1,
+					Jobs: []serviceadapter.Job{{
+						Name: "",
+					}},
+				})
+			})
+
+			It("runs the validation on the second instance group's job", func() {
 				Expect(plan.Validate()).To(HaveOccurred())
 			})
 		})

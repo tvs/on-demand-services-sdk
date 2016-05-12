@@ -62,7 +62,22 @@ type Plan struct {
 }
 
 func (p Plan) Validate() error {
-	return validate.Struct(p)
+	if err := validate.Struct(p); err != nil {
+		return err
+	}
+
+	for _, instanceGroup := range p.InstanceGroups {
+		if instanceGroup.Jobs == nil {
+			continue
+		}
+		for _, job := range instanceGroup.Jobs {
+			if err := validate.Struct(job); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 type InstanceGroup struct {
@@ -73,4 +88,11 @@ type InstanceGroup struct {
 	Networks       []string `json:"networks" validate:"required"`
 	AZs            []string `json:"azs,omitempty"`
 	Lifecycle      string   `yaml:"lifecycle,omitempty" json:"lifecycle,omitempty"`
+	Jobs           []Job    `json:"jobs,omitempty"`
+}
+
+type Job struct {
+	Name       string     `json:"name" validate:"required"`
+	Release    string     `json:"release" validate:"required"`
+	Properties Properties `json:"properties" validate:"required"`
 }
