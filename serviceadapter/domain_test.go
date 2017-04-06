@@ -23,7 +23,9 @@ import (
 	"github.com/pivotal-cf/on-demand-services-sdk/serviceadapter"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 )
 
 var _ = Describe("Domain", func() {
@@ -338,4 +340,57 @@ var _ = Describe("Domain", func() {
 			})
 		})
 	})
+
+	DescribeTable("ErrorForExitCode",
+		func(code int, msg string, matchErr types.GomegaMatcher, matchMsg types.GomegaMatcher) {
+			err := serviceadapter.ErrorForExitCode(code, msg)
+			Expect(err).To(matchErr)
+
+			if err != nil {
+				Expect(err.Error()).To(matchMsg)
+			}
+		},
+		Entry(
+			"success",
+			serviceadapter.SuccessExitCode, "",
+			BeNil(),
+			nil,
+		),
+		Entry(
+			"not implemented",
+			serviceadapter.NotImplementedExitCode, "should not appear",
+			BeAssignableToTypeOf(serviceadapter.NotImplementedError{}),
+			Equal("command not implemented by service adapter"),
+		),
+		Entry(
+			"app guid not provided",
+			serviceadapter.AppGuidNotProvidedErrorExitCode, "should not appear",
+			BeAssignableToTypeOf(serviceadapter.AppGuidNotProvidedError{}),
+			Equal("app GUID not provided"),
+		),
+		Entry(
+			"binding already exists",
+			serviceadapter.BindingAlreadyExistsErrorExitCode, "should not appear",
+			BeAssignableToTypeOf(serviceadapter.BindingAlreadyExistsError{}),
+			Equal("binding already exists"),
+		),
+		Entry(
+			"binding not found",
+			serviceadapter.BindingNotFoundErrorExitCode, "should not appear",
+			BeAssignableToTypeOf(serviceadapter.BindingNotFoundError{}),
+			Equal("binding not found"),
+		),
+		Entry(
+			"standard error exit code",
+			serviceadapter.ErrorExitCode, "some error",
+			BeAssignableToTypeOf(serviceadapter.GenericError{}),
+			Equal("some error"),
+		),
+		Entry(
+			"some other non-zero exit code",
+			12345, "some other error",
+			BeAssignableToTypeOf(serviceadapter.GenericError{}),
+			Equal("some other error"),
+		),
+	)
 })

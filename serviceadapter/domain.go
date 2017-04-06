@@ -42,12 +42,37 @@ type DashboardUrl struct {
 }
 
 const (
+	SuccessExitCode                   = 0
 	ErrorExitCode                     = 1
 	NotImplementedExitCode            = 10
 	BindingNotFoundErrorExitCode      = 41
 	AppGuidNotProvidedErrorExitCode   = 42
 	BindingAlreadyExistsErrorExitCode = 49
 )
+
+var exitCodeMap = map[int]error{
+	SuccessExitCode:                   nil,
+	NotImplementedExitCode:            NotImplementedError{errors.New("command not implemented by service adapter")},
+	AppGuidNotProvidedErrorExitCode:   AppGuidNotProvidedError{errors.New("app GUID not provided")},
+	BindingAlreadyExistsErrorExitCode: BindingAlreadyExistsError{errors.New("binding already exists")},
+	BindingNotFoundErrorExitCode:      BindingNotFoundError{errors.New("binding not found")},
+}
+
+func ErrorForExitCode(code int, message string) error {
+	if err, found := exitCodeMap[code]; found {
+		return err
+	}
+
+	return GenericError{errors.New(message)}
+}
+
+type GenericError struct {
+	error
+}
+
+type NotImplementedError struct {
+	error
+}
 
 type BindingAlreadyExistsError struct {
 	error
@@ -59,6 +84,10 @@ type AppGuidNotProvidedError struct {
 
 type BindingNotFoundError struct {
 	error
+}
+
+func NewGenericError(msg string) GenericError {
+	return GenericError{errors.New(msg)}
 }
 
 func NewBindingAlreadyExistsError(err error) BindingAlreadyExistsError {
